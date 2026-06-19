@@ -1,0 +1,17 @@
+langchain
+langchain-core
+langchain-community
+
+langchain-openai
+langchain-mistralai
+
+chromadb
+
+pypdf
+python-dotenv
+
+tiktoken
+
+sentence-transformers
+
+streamlit

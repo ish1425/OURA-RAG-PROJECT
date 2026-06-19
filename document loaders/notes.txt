@@ -1,0 +1,160 @@
+Machine Learning: Decision Trees
+
+Introduction
+
+Decision Trees are one of the most popular supervised machine learning algorithms used for both classification and regression tasks. They are easy to understand, interpret, and visualize. A Decision Tree works by splitting the dataset into smaller subsets while simultaneously developing an associated tree structure.
+
+The topmost node of the tree is called the root node. Internal nodes represent decisions based on feature values, while leaf nodes represent the final output or prediction.
+
+How Decision Trees Work
+
+The algorithm starts at the root node and selects the feature that best splits the data. The process is repeated recursively until one of the stopping conditions is met.
+
+For example, consider a dataset used to determine whether a customer will purchase a product.
+
+Root Node:
+- Age
+
+Possible Splits:
+- Age < 30
+- Age >= 30
+
+Further splits may occur based on income, occupation, or previous purchases.
+
+The objective is to create groups that are as pure as possible, meaning that the samples within each group belong to the same class.
+
+Entropy
+
+Entropy is a measure of impurity or randomness in a dataset.
+
+Formula:
+
+Entropy(S) = - Σ p(i) log2 p(i)
+
+Where:
+- p(i) is the probability of class i
+
+Properties:
+- Entropy = 0 means the dataset is perfectly pure.
+- Higher entropy indicates more disorder.
+- Maximum entropy occurs when classes are equally distributed.
+
+Example:
+
+Dataset:
+- 8 Positive
+- 8 Negative
+
+Entropy = 1.0
+
+Dataset:
+- 16 Positive
+- 0 Negative
+
+Entropy = 0
+
+Information Gain
+
+Information Gain measures how much uncertainty is reduced after splitting the data.
+
+Formula:
+
+Information Gain = Entropy(Parent) - Weighted Average Entropy(Children)
+
+The feature with the highest Information Gain is selected for splitting.
+
+Advantages of Information Gain:
+- Produces informative splits
+- Easy to calculate
+- Widely used in the ID3 algorithm
+
+Gini Index
+
+The Gini Index is another metric used to evaluate split quality.
+
+Formula:
+
+Gini = 1 - Σ (p(i))²
+
+Properties:
+- Lower Gini values indicate purer nodes.
+- Gini = 0 means perfect purity.
+
+The CART (Classification and Regression Trees) algorithm commonly uses the Gini Index instead of Entropy.
+
+Decision Tree Algorithms
+
+1. ID3 (Iterative Dichotomiser 3)
+- Uses Entropy and Information Gain
+- Supports categorical features
+- Does not support pruning
+
+2. C4.5
+- Extension of ID3
+- Uses Gain Ratio
+- Supports continuous and categorical features
+- Includes pruning
+
+3. CART
+- Uses Gini Index
+- Supports classification and regression
+- Produces binary trees
+
+Overfitting in Decision Trees
+
+Decision Trees can easily overfit training data by creating very deep trees.
+
+Symptoms:
+- Very high training accuracy
+- Poor testing accuracy
+
+Causes:
+- Excessive tree depth
+- Noise in the dataset
+- Too many features
+
+Methods to Prevent Overfitting
+
+1. Maximum Depth
+Limit how deep the tree can grow.
+
+2. Minimum Samples Split
+Require a minimum number of samples before creating a new split.
+
+3. Minimum Samples Leaf
+Require a minimum number of samples in leaf nodes.
+
+4. Pruning
+Remove branches that contribute little to predictive performance.
+
+Types of Pruning
+
+Pre-Pruning:
+Stop tree growth early using constraints such as max depth.
+
+Post-Pruning:
+Grow the entire tree first and then remove unnecessary branches.
+
+Advantages of Decision Trees
+
+- Easy to understand and interpret
+- Requires little data preprocessing
+- Can handle numerical and categorical data
+- Supports feature importance analysis
+- Fast prediction speed
+
+Disadvantages of Decision Trees
+
+- Prone to overfitting
+- Sensitive to small changes in data
+- Can create biased trees when classes are imbalanced
+- Lower accuracy compared to ensemble methods in many cases
+
+Feature Importance
+
+Decision Trees can estimate feature importance by measuring how much each feature contributes to reducing impurity.
+
+
+Summary
+
+Decision Trees are simple yet powerful machine learning algorithms. They work by recursively splitting data based on feature values to create pure groups. Common splitting metrics include Entropy, Information Gain, and Gini Index. While Decision Trees are easy to interpret, they can overfit if not properly controlled. Techniques such as pruning and depth limitation help improve generalization. Decision Trees form the foundation of many advanced ensemble methods such as Random Forest and Gradient Boosting.
