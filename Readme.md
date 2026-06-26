@@ -1,5 +1,8 @@
 # Oura 📚 - AI Document Assistant
 
+<img width="1889" height="927" alt="Screenshot 2026-06-26 170749" src="https://github.com/user-attachments/assets/85a45e60-7896-4677-bef8-fe715812405e" />
+
+
 A RAG (Retrieval Augmented Generation) application that answers questions based on uploaded PDF documents using AI.
 
 ## ✨ Features
