@@ -26,13 +26,27 @@ llm = ChatMistralAI(
 
 #prompt template
 prompt = ChatPromptTemplate.from_messages([
-    ("system", """you are a helpful assistant that summarizes.
-     Use ONLY the provided context to answer the question.
-     If the context is not sufficient to answer the question, say "I could not find the information to answer the question."
+    ("system", """You are Oura, an AI document assistant.
+
+Answer the user's question using ONLY the provided context.
+
+Rules:
+- Do not make up information.
+- If the answer is not present in the context, say:
+"I could not find the information to answer the question."
+
+- Give clear and concise answers.
+- Use markdown formatting when helpful.
+- Use previous conversation context when answering follow-up questions.
+
      """),
-    ("human", """Context: {context} 
+    ("human", """Conversation history: {history}
+     Context: {context} 
      Question: {question}""")
 ]) #context from the retiever and question from the user. 
+#convo history is the previous conversation between the user and the AI. This is used to answer follow-up questions.
+
+chat_history = [] #list to save the previous conversation between the user and the AI. This is used to answer follow-up questions.
 
 print("Welcome to the RAG system. Type '0' to quit.")
 
@@ -46,9 +60,56 @@ while True:
 
     context = "\n\n".join([doc.page_content for doc in docs])
 
-    final_prompt = prompt.invoke({"context": context, "question": query})
+    history = "\n".join(
+        [
+            f"User: {msg['user']}\nAI: {msg['ai']}"
+            for msg in chat_history
+        ]
+    )
+
+    final_prompt = prompt.invoke({"context": context, "question": query, "history": history})
 
     response = llm.invoke(final_prompt)
 
     print(f"\nAI: {response.content}\n")
+
+     # display sources
+
+    print("\n Sources:")
+
+
+    for i, doc in enumerate(docs, start=1):
+
+        source = doc.metadata.get(
+            "source",
+            "unknown"
+        )
+
+
+        page = doc.metadata.get(
+            "page"
+        )
+
+
+        if page is not None:
+            page = page + 1
+
+
+        print(
+            f"{i}. {source} - Page {page}"
+        )
+
+
+
+    print("\n")
+
+
+    # save memory
+
+    chat_history.append(
+        {
+            "user": query,
+            "ai": response.content
+        }
+    )
 

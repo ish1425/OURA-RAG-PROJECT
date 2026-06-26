@@ -1,16 +1,21 @@
 import os
-import shutil
 import streamlit as st
 from dotenv import load_dotenv
 
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_mistralai import ChatMistralAI
 from langchain_core.prompts import ChatPromptTemplate
 
+from create_db import create_db
+
+
 load_dotenv()
+
+
+# -----------------------
+# Page config
+# -----------------------
 
 st.set_page_config(
     page_title="Oura",
@@ -18,236 +23,449 @@ st.set_page_config(
     layout="wide"
 )
 
-# ----------------------------
-# CSS
-# ----------------------------
 
-st.markdown("""
+# -----------------------
+# Styling
+# -----------------------
+
+st.markdown(
+"""
 <style>
 
-.block-container{
-    padding-top:2rem;
-    padding-bottom:2rem;
-    max-width:1000px;
-}
-
 .main-title{
-    font-size:42px;
-    font-weight:700;
     text-align:center;
+    font-size:45px;
+    font-weight:700;
 }
 
-.sub-title{
+.subtitle{
     text-align:center;
     color:gray;
-    margin-bottom:25px;
-}
-
-.upload-box{
-    border:1px solid #ddd;
-    padding:15px;
-    border-radius:12px;
+    margin-bottom:30px;
 }
 
 </style>
-""", unsafe_allow_html=True)
+
+""",
+unsafe_allow_html=True
+)
 
 
-# ----------------------------
-# Session State
-# ----------------------------
+# -----------------------
+# Header
+# -----------------------
+
+st.markdown(
+"<div class='main-title'>📚 Oura</div>",
+unsafe_allow_html=True
+)
+
+st.markdown(
+"<div class='subtitle'>AI Document Assistant</div>",
+unsafe_allow_html=True
+)
+
+
+
+# -----------------------
+# Session memory
+# -----------------------
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-if "db_ready" not in st.session_state:
-    st.session_state.db_ready = False
+
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
 
 
-# ----------------------------
-# Header
-# ----------------------------
 
-st.markdown(
-    "<div class='main-title'>📚 Oura</div>",
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    "<div class='sub-title'>Your AI Book Assistant</div>",
-    unsafe_allow_html=True
-)
-
-
-# ----------------------------
+# -----------------------
 # Sidebar
-# ----------------------------
+# -----------------------
 
 with st.sidebar:
 
-    st.header("Knowledge Base")
 
-    uploaded_file = st.file_uploader(
-        "Upload a PDF",
-        type="pdf"
+    st.header("📄 Upload Documents")
+
+
+    uploaded_files = st.file_uploader(
+        "Upload PDF(s)",
+        type="pdf",
+        accept_multiple_files=True
     )
+
 
     if st.button("Create Knowledge Base"):
 
-        if uploaded_file is None:
-            st.warning("Please upload a PDF first.")
+
+        if uploaded_files:
+
+
+            os.makedirs(
+                "document loaders",
+                exist_ok=True
+            )
+
+
+            pdf_paths = []
+
+
+            for file in uploaded_files:
+
+
+                path = os.path.join(
+                    "document loaders",
+                    file.name
+                )
+
+
+                with open(path,"wb") as f:
+
+                    f.write(
+                        file.getbuffer()
+                    )
+
+
+                pdf_paths.append(path)
+
+
+
+            with st.spinner(
+                "Creating vector database..."
+            ):
+
+                create_db(pdf_paths)
+
+
+            st.success(
+                "Knowledge Base Created!"
+            )
+
 
         else:
 
-            os.makedirs("document loaders", exist_ok=True)
-
-            pdf_path = os.path.join(
-                "document loaders",
-                uploaded_file.name
+            st.warning(
+                "Please upload PDF files first."
             )
 
-            with open(pdf_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
 
-            if os.path.exists("chroma-db"):
-                shutil.rmtree("chroma-db")
-
-            with st.spinner("Creating embeddings..."):
-
-                loader = PyPDFLoader(pdf_path)
-                docs = loader.load()
-
-                splitter = RecursiveCharacterTextSplitter(
-                    chunk_size=1000,
-                    chunk_overlap=200
-                )
-
-                chunks = splitter.split_documents(docs)
-
-                embeddings = OpenAIEmbeddings()
-
-                Chroma.from_documents(
-                    documents=chunks,
-                    embedding=embeddings,
-                    persist_directory="chroma-db"
-                )
-
-            st.success("Knowledge Base Created!")
-
-            st.session_state.db_ready = True
 
     st.divider()
 
+
     if st.button("Clear Chat"):
+
         st.session_state.messages = []
+
+        st.session_state.chat_history = []
+
         st.rerun()
 
 
-# ----------------------------
-# Load Vector DB
-# ----------------------------
 
-if st.session_state.db_ready or os.path.exists("chroma-db"):
+
+# -----------------------
+# Load Vector Database
+# -----------------------
+
+if os.path.exists("chroma-db"):
+
 
     embedding_model = OpenAIEmbeddings()
 
+
     vectorstore = Chroma(
+
         persist_directory="chroma-db",
+
         embedding_function=embedding_model
+
     )
 
+
     retriever = vectorstore.as_retriever(
+
         search_type="mmr",
+
         search_kwargs={
             "k":4,
             "fetch_k":10,
             "lambda_mult":0.5
         }
+
     )
 
+
+
     llm = ChatMistralAI(
+
         model="mistral-small-2506"
+
     )
+
+
 
     prompt = ChatPromptTemplate.from_messages([
 
-        ("system",
-        """You are a helpful assistant that summarizes.
 
-Use ONLY the provided context.
+        (
+        "system",
 
-If the context is insufficient say:
+        """
+You are Oura, an AI document assistant.
 
+Answer only using the provided context.
+
+Rules:
+
+- Do not hallucinate.
+- If information is missing say:
 "I could not find the information to answer the question."
-"""),
 
-        ("human",
-        """Context:
+- Keep answers clear and concise.
+- Use markdown formatting.
+- Use conversation history for follow-up questions.
+
+"""
+        ),
+
+
+        (
+        "human",
+
+        """
+Conversation history:
+
+{history}
+
+
+Context:
 
 {context}
+
 
 Question:
 
 {question}
-""")
+
+"""
+        )
+
     ])
 
-# ----------------------------
-# Chat History
-# ----------------------------
+
+
+else:
+
+
+    st.info(
+        "Upload documents and create a knowledge base first."
+    )
+
+    retriever = None
+
+
+
+# -----------------------
+# Display old messages
+# -----------------------
 
 for message in st.session_state.messages:
 
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
 
+    with st.chat_message(
+        message["role"]
+    ):
 
-# ----------------------------
-# Chat Input
-# ----------------------------
-
-user_question = st.chat_input("Ask something about your uploaded book...")
-
-if user_question:
-
-    if not os.path.exists("chroma-db"):
-
-        st.warning("Please upload a PDF and create the knowledge base first.")
-
-    else:
-
-        st.session_state.messages.append(
-            {
-                "role":"user",
-                "content":user_question
-            }
+        st.markdown(
+            message["content"]
         )
 
-        with st.chat_message("user"):
-            st.markdown(user_question)
 
-        with st.chat_message("assistant"):
 
-            with st.spinner("Thinking..."):
 
-                docs = retriever.invoke(user_question)
+# -----------------------
+# Chat
+# -----------------------
 
-                context = "\n\n".join(
-                    [doc.page_content for doc in docs]
-                )
+query = st.chat_input(
+    "Ask something about your documents..."
+)
 
-                final_prompt = prompt.invoke({
+
+
+if query and retriever:
+
+
+    # user message
+
+    st.session_state.messages.append(
+        {
+            "role":"user",
+            "content":query
+        }
+    )
+
+
+    with st.chat_message("user"):
+
+        st.markdown(query)
+
+
+
+    with st.chat_message("assistant"):
+
+
+        with st.spinner(
+            "Thinking..."
+        ):
+
+
+            # retrieve documents
+
+            docs = retriever.invoke(query)
+
+
+
+            context = "\n\n".join(
+
+                [
+                    doc.page_content
+                    for doc in docs
+                ]
+
+            )
+
+
+
+            history = "\n".join(
+
+                [
+                    f"User: {msg['user']}\nAI:{msg['ai']}"
+
+                    for msg in st.session_state.chat_history
+
+                ]
+
+            )
+
+
+
+            final_prompt = prompt.invoke(
+
+                {
                     "context":context,
-                    "question":user_question
-                })
 
-                response = llm.invoke(final_prompt)
+                    "question":query,
 
-                st.markdown(response.content)
+                    "history":history
 
-        st.session_state.messages.append(
-            {
-                "role":"assistant",
-                "content":response.content
-            }
-        )
+                }
+
+            )
+
+
+
+            response = llm.invoke(
+                final_prompt
+            )
+
+
+
+            st.markdown(
+                response.content
+            )
+
+
+
+            # -----------------------
+            # Sources
+            # -----------------------
+
+            with st.expander(
+                "📄 Sources Used"
+            ):
+
+
+                for i,doc in enumerate(
+                    docs,
+                    start=1
+                ):
+
+
+                    source = doc.metadata.get(
+                        "source",
+                        "unknown"
+                    )
+
+
+                    page = doc.metadata.get(
+                        "page"
+                    )
+
+
+                    if page:
+
+                        page += 1
+
+
+                    st.write(
+                        f"{i}. {source} - Page {page}"
+                    )
+
+
+
+            # -----------------------
+            # Retrieved Context
+            # -----------------------
+
+            with st.expander(
+                "🔎 Retrieved Context"
+            ):
+
+
+                for i,doc in enumerate(
+                    docs,
+                    start=1
+                ):
+
+
+                    st.write(
+                        f"Chunk {i}"
+                    )
+
+
+                    st.write(
+                        doc.page_content[:300]
+                        + "..."
+                    )
+
+
+                    st.divider()
+
+
+
+    # save memory
+
+    st.session_state.chat_history.append(
+
+        {
+            "user":query,
+
+            "ai":response.content
+        }
+
+    )
+
+
+    st.session_state.messages.append(
+
+        {
+            "role":"assistant",
+
+            "content":response.content
+        }
+
+    )

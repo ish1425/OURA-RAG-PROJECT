@@ -1,26 +1,46 @@
-#load pdf
-#split into chunks
-#create embeddings
-#store in vector database (chroma)
+# load pdf
+# split into chunks
+# create embeddings
+# store in vector database (chroma)
+
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from dotenv import load_dotenv
+
 load_dotenv()
 
-loader = PyPDFLoader("document loaders/deeplearning.pdf") 
-docs = loader.load()
 
-splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+def create_db(pdf_paths):
 
-chunks = splitter.split_documents(docs)
+    all_docs = [] #list to save all the pdfs that are uploaded
 
-embeddings_model = OpenAIEmbeddings()
+    # Load all uploaded PDFs
+    for pdf_path in pdf_paths:
 
-vectorstore = Chroma.from_documents( #from_documents is a function that takes in the documents and embeddings and creates a vector database
-    documents=chunks,
-    embedding=embeddings_model,
-    persist_directory="chroma-db"
+        loader = PyPDFLoader(pdf_path)
+        docs = loader.load()
+
+        all_docs.extend(docs)
+
+    # Split into chunks
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200
     )
+
+    chunks = splitter.split_documents(all_docs)
+
+    # Create embeddings
+    embeddings_model = OpenAIEmbeddings()
+
+    # Store in Chroma
+    vectorstore = Chroma.from_documents(
+        documents=chunks,
+        embedding=embeddings_model,
+        persist_directory="chroma-db"
+    )
+
+    return vectorstore
 
