@@ -1,4 +1,4 @@
-# Oura 📚 - AI Document Assistant
+# Oura 📚 - A Retrieval-Augmented Generation (RAG) Based Document Assistant
 
 <img width="1889" height="927" alt="Screenshot 2026-06-26 170749" src="https://github.com/user-attachments/assets/85a45e60-7896-4677-bef8-fe715812405e" />
 
