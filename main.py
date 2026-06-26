@@ -1,30 +1,54 @@
-from dotenv import load_dotenv
+from dotenv import load_dotenv  
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import Chroma #to retireve the data from the vector database created alr
 from langchain_mistralai import ChatMistralAI
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_core.prompts import ChatPromptTemplate #we use chatprompttemplate so we can give roles
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.prompts import ChatPromptTemplate
 load_dotenv()
 
+embedding_model = OpenAIEmbeddings()
 
-#data = TextLoader("document loaders/notes.txt") #this is how you import text file
-data = PyPDFLoader("document loaders/deeplearning.pdf") 
-docs = data.load()
+vectorstore = Chroma(
+    persist_directory = "chroma-db",
+    embedding_function = embedding_model
+) #loaded the vector database
 
-splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+#now we create retriever
+retriever = vectorstore.as_retriever(
+    search_type="mmr", 
+    search_kwargs={"k":4, "fetch_k":10, "lambda_mult": 0.5}
+    ) #k is the number of similar documents we want to retrieve. In this case, we are retrieving the top 2 similar documents based on the query.
+#fetch_k is the number of documents we want to fetch from the vector database. In this case, we are fetching the top 10 similar documents based on the query, and then from these 10 documents, we retrieve top 4 similar documents based on the query. 
+#lambda_mult is the weight given to the relevance/diversity score of the documents. In this case, we are giving equal weight to the relevance score and the diversity score of the documents.
 
-chunks = splitter.split_documents(docs)
-
-
-template = ChatPromptTemplate.from_messages([ #from_messages is used to give roles to the prompt. we can give system and human roles.
-    ("system", "you are a helpful assistant that summarizes the text"),
-    ("human", "{data}")
-])
-
-model = ChatMistralAI(
+llm = ChatMistralAI(
     model="mistral-small-2506"
 )
 
-prompt = template.format_messages(data=docs[0].page_content) #in the context of pdf, the [0] is used to get the first page of the pdf.
+#prompt template
+prompt = ChatPromptTemplate.from_messages([
+    ("system", """you are a helpful assistant that summarizes.
+     Use ONLY the provided context to answer the question.
+     If the context is not sufficient to answer the question, say "I could not find the information to answer the question."
+     """),
+    ("human", """Context: {context} 
+     Question: {question}""")
+]) #context from the retiever and question from the user. 
 
-result = model.invoke(prompt)
-print(result.content)
+print("Welcome to the RAG system. Type '0' to quit.")
+
+while True:
+    query = input("You: ")
+
+    if query == "0":
+        break
+
+    docs = retriever.invoke(query)
+
+    context = "\n\n".join([doc.page_content for doc in docs])
+
+    final_prompt = prompt.invoke({"context": context, "question": query})
+
+    response = llm.invoke(final_prompt)
+
+    print(f"\nAI: {response.content}\n")
+
