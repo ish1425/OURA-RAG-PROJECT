@@ -1,6 +1,6 @@
 # Oura 📚 - RAG Document Analysis Platform
 
-![Oura App Screenshot](Oura app.png)
+![Oura App Screenshot](./images/Oura app.png)
 
 A powerful Retrieval Augmented Generation (RAG) application that enables intelligent document analysis and context-aware question-answering. Upload PDFs, ask questions, and get accurate answers backed by source citations.
 
